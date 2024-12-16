@@ -55,9 +55,12 @@ jobs:
     # or on pull request if the 'notest' label is not set
     # or on pull request if the 'performance' label is set.
     if: github.repository_owner == 'sqaunderhood' &&
-        ( github.event_name != 'pull_request' ||
+        ( ( github.event_name != 'pull_request' &&
+            github.event_name != 'pull_request_target' ) ||
           ( github.event_name == 'pull_request' &&
-            !contains(github.event.pull_request.labels.*.name, 'notest') ) )
+            !contains(github.event.pull_request.labels.*.name, 'notest') ) ||
+          ( github.event_name == 'pull_request_target' &&
+            contains(github.event.pull_request.labels.*.name, 'performance') ) )
 
     # 'performance' label _must_ be set only for the single runner
     # to guarantee that results are not dependent on the machine.
