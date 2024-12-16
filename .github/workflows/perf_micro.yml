@@ -7,6 +7,12 @@ on:
       - 'release/**'
     tags:
       - '**'
+    paths:
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/perf_micro.yml'
+      - 'perf/**'
+      - 'src/**'
   pull_request:
   workflow_dispatch:
   workflow_call:
@@ -19,6 +25,8 @@ on:
         description: Git revision from submodule repository
         required: true
         type: string
+  schedule:
+    - cron: '0 0 * * *'  # Once a day at midnight.
 
 concurrency:
   # Update of a developer branch cancels the previously scheduled workflow
@@ -63,8 +71,8 @@ jobs:
     timeout-minutes: 60
 
     env:
-        PERF_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
-        PERF_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      PERF_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      PERF_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Prepare checkout
@@ -91,6 +99,25 @@ jobs:
         if: github.event_name != 'pull_request' ||
           github.event.pull_request.head.repo.full_name == github.repository
         run: sh ./perf/tools/setup_env.sh
+      - name: Remove a label 'performance'
+        # The step prevents unnecessary runs on performance
+        # machine by removing label 'performance' in PR after
+        # running the job. See GitHub REST API documentation [1].
+        #
+        # 1. https://docs.github.com/en/rest/issues/labels?apiVersion=2022-11-28#remove-a-label-from-an-issue
+        if: github.event_name == 'pull_request_target' &&
+            contains(github.event.pull_request.labels.*.name, 'performance')
+        run: >
+          curl --silent --fail-with-body \
+          --write-out "%{http_code}"
+          --retry 5
+          --retry-delay 5
+          --connect-timeout 120
+          --fail --silent -o /dev/null
+          -X DELETE \
+          -H 'Accept: application/vnd.github.v3+json' \
+          -H 'Authorization: token ${{ github.token }}' \
+          'https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.number }}/labels/performance'
       - name: test
         run: make -f .test.mk test-perf
         env:
