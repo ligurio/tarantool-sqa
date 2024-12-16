@@ -14,6 +14,8 @@ on:
       - 'perf/**'
       - 'src/**'
   pull_request:
+  pull_request_target:
+    types: [labeled]
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -49,9 +51,9 @@ concurrency:
 
 jobs:
   perf_micro:
-    # Run on push to the 'master' and release branches of tarantool/tarantool
+    # Run on push to the 'master' and release branches of sqaunderhood/tarantool
     # or on pull request if the 'notest' label is not set.
-    if: github.repository_owner == 'tarantool' &&
+    if: github.repository_owner == 'sqaunderhood' &&
         ( github.event_name != 'pull_request' ||
           ( github.event_name == 'pull_request' &&
             !contains(github.event.pull_request.labels.*.name, 'notest') ) )
@@ -81,7 +83,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
-          repository: tarantool/tarantool
+          repository: sqaunderhood/tarantool
           ref: ${{ inputs.submodule && 'master' || github.ref }}
       - uses: ./.github/actions/environment
       - name: Install deps
